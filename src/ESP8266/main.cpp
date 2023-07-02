@@ -6,6 +6,7 @@
 #include <PubSubClient.h>
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <Wire.h>
 
 #include "Res/room_light_sensor.h"
@@ -29,6 +30,7 @@ const char *TOPIC_PARAM = "params/esp001";
 const char *MESSAGE = "Esp8266_1 sendet Hallo Welt!";
 const char *CONFIG = "esp001,config";
 
+const char *MQTT_HOST = MQTT_HOST_PI;
 // ############################################################################
 /**
  * wifiSetup
@@ -104,9 +106,9 @@ void setup()
   //  pinMode(LED_BUILTIN, OUTPUT);
 }
 
-String rVal;
+String publishKennung;
 String sensorVal;
-String publishVal;
+String publishPayload;
 void loop()
 {
   if (!wifiClient.connected())
@@ -121,7 +123,8 @@ void loop()
 
   mqttClient.loop();
   delay(10);
-  publishVal = "";
+
+  publishPayload = "";
   String firstSet = "name,wert\n";
   // for(int i=0; i < (int)sizeof(*mAtsList); i++) {
   for (int i = 0; i < 2; i++)
@@ -131,23 +134,12 @@ void loop()
     sensorVal = a_pAirTemperatureSensorList[i]->m_auslesen();
     if (sensorVal != "")
     {      
-      publishVal.concat('\n');
-      publishVal.concat(firstSet);
-      publishVal.concat(sensorVal);      
-      firstSet = "";
+      publishPayload.concat('\n');
+      publishPayload.concat(sensorVal);      
     }
     delay(100);
   }
 
-  if(publishVal != "") {
-    rVal = MQTT_CLIENT_ID;
-    rVal.concat(",values");
-    rVal.concat(publishVal);
-    publish(&rVal);
-  }
-  publishVal = "";
-
-  firstSet = "name,wert\n";
   // for(int i=0; i < (int)sizeof(*mAtsList); i++) {
   for (int i = 0; i < 2; i++)
   {
@@ -156,44 +148,32 @@ void loop()
     sensorVal = a_pAirMoistureSensorList[i]->m_auslesen();
     if (sensorVal != "")
     {      
-      publishVal.concat('\n');
-      publishVal.concat(firstSet);
-      publishVal.concat(sensorVal);      
-      firstSet = "";
+      publishPayload.concat('\n');
+      publishPayload.concat(sensorVal);      
     }
     delay(100);
   }
 
-  if(publishVal != "") {
-    rVal = MQTT_CLIENT_ID;
-    rVal.concat(",values");
-    rVal.concat(publishVal);
-    publish(&rVal);
-  }
-  publishVal = "";
-
-  firstSet = "name,wert\n";
-  // for(int i=0; i < (int)sizeof(*mAlsList); i++) {
   for (int i = 0; i < 3; i++)
   {
     // TODO Exception abfangen
     sensorVal = m_pRoomLightSensorList[i]->m_auslesen();
     if (sensorVal != "")
     {
-      publishVal.concat('\n');
-      publishVal.concat(firstSet);
-      publishVal.concat(sensorVal);      
-      firstSet = "";
+      publishPayload.concat('\n');
+      publishPayload.concat(sensorVal);      
     }
     delay(100);
   }
 
-  if(publishVal != "") {
-    rVal = MQTT_CLIENT_ID;
-    rVal.concat(",values");
-    rVal.concat(publishVal);
-    publish(&rVal);
+  if(publishPayload != "") {
+    publishKennung = MQTT_CLIENT_ID;
+    publishKennung.concat(",sensors\nname, wert");
+    publishKennung.concat(publishPayload);
+    publish(&publishKennung);
   }
+  else
+    Serial.println("In dieser Runde keine Werte");
 
   delay(delayTime);
 }
@@ -229,7 +209,22 @@ void publish(String *sVal)
  * Sendet via Mqtt eine Anfrage mit der bitte um configurationsdaten
 */
 void config() {
-  mqttClient.publish(TOPIC_VALUES, CONFIG);
+  
+  StaticJsonDocument<200> doc; // Erstellen Sie ein StaticJsonDocument mit ausreichend Kapazität
+  std::string myKey = "esp001";
+  std::string myValue = "config";
+
+  // Fügen Sie den Schlüssel-Wert-Paar zu dem Dokument hinzu
+  doc[myKey.c_str()] = myValue.c_str();
+
+  char buffer[512];
+  serializeJson(doc, Serial);
+  serializeJson(doc, buffer);
+
+  mqttClient.publish(TOPIC_VALUES, buffer);
+  //mqttClient.publish(TOPIC_VALUES, doc);
+  
+  //Serial.println(doc);
   Serial.println("esp001 meldet eine config anfrage");
 }
 
@@ -377,7 +372,7 @@ void wifiSetup()
 
 void mqttSetup()
 {
-  mqttClient.setServer(MQTT_HOST_ONLINE, MQTT_PORT);
+  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   mqttClient.setCallback(callback);
   mqttConnect();
 }
