@@ -16,8 +16,8 @@ AirTemperatureSensor::~AirTemperatureSensor() {
 void AirTemperatureSensor::m_setup()
 {  
   // Standard
-  m_uiTimeSinceLastRead = 0;
-  m_uiInterval = 5;
+  m_uiTimeSinceLastRead = millis();
+  m_uiInterval = 1;
   m_uiIsRunning = 0;
   m_uiLastIsRunning = m_uiIsRunning;
   m_uiLastInterval = m_uiInterval;
@@ -57,35 +57,25 @@ void AirTemperatureSensor::m_printStatus() {
 
 
 // Standard
-String AirTemperatureSensor::m_auslesen()
-{
-
-  if (m_uiIsRunning && m_uiTimeSinceLastRead > (m_uiInterval * 100))
+float AirTemperatureSensor::m_getValue() {
+  
+  if (m_uiIsRunning && (millis() - m_uiTimeSinceLastRead > (m_uiInterval * 60000)))  
   {
     // Reading temperature or humidity takes about 250 milliseconds!
     // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-    float h = m_pDHT->readHumidity();
     // Read temperature as Celsius (the default)
-    float t = m_pDHT->readTemperature();
+    float rVal = m_pDHT->readTemperature();
 
-    if (isnan(h) || isnan(t))
+    if (isnan(rVal))
     {
       Serial.println(m_sName + " Lesefehler am Sensor");
-      return "";
+      return 0;
     }
-    float hi = m_pDHT->computeHeatIndex(t, h, false);
 
     // Absender
-    String rVal = m_sName;
-    
-    // Payload
-    rVal.concat(',');
-    rVal.concat(t);    
-
-    m_uiTimeSinceLastRead = 0;
+    m_uiTimeSinceLastRead = millis();
     return rVal;
   }
-
-  m_uiTimeSinceLastRead += 100;
-  return "";
+  
+  return 0;
 }

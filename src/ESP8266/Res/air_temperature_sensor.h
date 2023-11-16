@@ -35,7 +35,8 @@ public:
   uint8_t m_getIsRunning();
   void m_setIsRunning(uint8_t uiVal); 
   void m_printStatus();
-  String m_auslesen();
+  
+  float m_getValue();
 };
 
 #endif

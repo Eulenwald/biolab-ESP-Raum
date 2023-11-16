@@ -1,0 +1,11 @@
+.pio
+.vscode
+include/
+lib/
+Ablagen/
+test/
+src/zentrale/
+src/*.txt
+src/ESP8266/*.txt
+src/ESP8266/*.txttxt
+src/Docker/
